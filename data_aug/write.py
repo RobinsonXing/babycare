@@ -1,7 +1,7 @@
 import os
 
-sequence_dir = './data_aug/ChatGPT-o4-instructed/sequence'
-label_dir = './data_aug/ChatGPT-o4-instructed/label'
+sequence_dir = './data_aug/ChatGPT-o4-instructed_v2/sequence'
+label_dir = './data_aug/ChatGPT-o4-instructed_v2/label'
 
 
 os.makedirs(sequence_dir, exist_ok=True)
