@@ -1,10 +1,12 @@
 import os
 
-# 指定存放加速度和标签的目录
-sequence_dir = '/fast/workspace/robinson/CodeSource/babycare/data_aug/ChatGPT-o4-instructed/sequence'
-label_dir = '/fast/workspace/robinson/CodeSource/babycare/data_aug/ChatGPT-o4-instructed/label'
+sequence_dir = './data_aug/ChatGPT-o4-instructed/sequence'
+label_dir = './data_aug/ChatGPT-o4-instructed/label'
 
-# 自动找到第一个空文件对
+
+os.makedirs(sequence_dir, exist_ok=True)
+os.makedirs(label_dir, exist_ok=True)
+
 def find_next_empty_file_pair(max_index=10000):
     for i in range(max_index):
         file_id = f"A{i:05d}"
@@ -15,26 +17,26 @@ def find_next_empty_file_pair(max_index=10000):
                 return seq_path, label_path
     return None, None
 
-print("🟢 开始循环写入数据，输入 'exit' 后按回车 可退出。")
+print("[Log] Start to write data.")
 
 while True:
-    print("\n请粘贴第一段加速度数据（包含表头），输入 'exit' 退出：")
+    print("\n[Log] write sequence data including header (or enter 'exit' to terminate)：")
     seq_lines = []
     while True:
         line = input()
         if line.strip().lower() == "exit":
-            print("⛔️ 已退出。")
+            print("[log] exited.")
             exit(0)
         if line.strip() == "":
             break
         seq_lines.append(line)
 
-    print("请粘贴第二段标签数据（包含表头），输入 'exit' 退出：")
+    print("[Log] write label data including header (or enter 'exit' to terminate)")
     label_lines = []
     while True:
         line = input()
         if line.strip().lower() == "exit":
-            print("⛔️ 已退出。")
+            print("[log] exited.")
             exit(0)
         if line.strip() == "":
             break
@@ -43,7 +45,7 @@ while True:
     seq_file, label_file = find_next_empty_file_pair()
 
     if not seq_file or not label_file:
-        print("❌ 未找到空文件对。已终止。")
+        print("[Log] Automatically terminate for no blank file。")
         break
 
     with open(seq_file, 'w', encoding='utf-8') as f:
@@ -52,4 +54,4 @@ while True:
     with open(label_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(label_lines) + '\n')
 
-    print(f"✅ 已写入到：\n - {seq_file}\n - {label_file}")
+    print(f"[Log] have been written to：\n - {seq_file}\n - {label_file}")
