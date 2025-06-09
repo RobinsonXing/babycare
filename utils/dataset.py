@@ -2,54 +2,50 @@ import os
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from datetime import datetime, timedelta
 import random
 
 class BabyMotionDataset(Dataset):
     def __init__(self, 
-                 origin_sequence_dir: str,
-                 origin_label_dir: str,
-                 aug_dirs: list = None,
+                 origin_dir: str,
+                 aug_dirs: list[str] = None,
                  max_len: int = 100,
                  min_len: int = 10,
                  is_train: bool = True,
-                 split_ratio: float = 0.8,
-                 random_seed: int = 42,
                  transform=None):
         
         self.max_len = max_len
         self.min_len = min_len
-        self.is_train = is_train
-        self.split_ratio = split_ratio
-        self.random_seed = random_seed
         self.transform = transform
 
-        self.sequence_label_pairs = []
-        self._load_pairs_from_dir(origin_sequence_dir, origin_label_dir, True)
-        if self.is_train and aug_dirs:
-            for seq_dir, label_dir in aug_dirs:
-                self._load_pairs_from_dir(seq_dir, label_dir, False)
+        origin_seq_dir, origin_label_dir = self._find_pair_dirs(origin_dir)
+        id_txt = os.path.join(origin_dir, "train.txt" if is_train else "val.txt")
+        if not os.path.exists(id_txt):
+            raise FileNotFoundError(f"{id_txt} not found.")
+        with open(id_txt, "r") as f:
+            origin_indices = [line.strip() for line in f if line.strip()]
 
-    def _load_pairs_from_dir(self, seq_dir, label_dir, is_origin):
-        if not os.path.exists(seq_dir) or not os.path.exists(label_dir):
-            print(f"[Warning] Directory not found: {seq_dir} or {label_dir}")
-            return
-        indices = sorted([
-            f[:-4] for f in os.listdir(seq_dir)
-            if f.endswith(".csv")
-        ])
-        if is_origin:
-            random.seed(self.random_seed)
-            random.shuffle(indices)
-            split_idx = int(len(indices) * self.split_ratio)
-            if self.is_train:
-                indices = indices[:split_idx]
-            else:
-                indices = indices[split_idx:]
+        self.sequence_label_pairs = []
+        self._load_pairs_from_dir(origin_seq_dir, origin_label_dir, origin_indices)
+        if is_train and aug_dirs:
+            aug_pair_dirs = [(self._find_pair_dirs(aug_dir)) for aug_dir in aug_dirs]
+            for aug_seq_dir, aug_label_dir in aug_pair_dirs:
+                aug_indices = sorted([
+                    fname[:-4] for fname in os.listdir(aug_seq_dir)
+                    if fname.endswith(".csv")
+                ])
+                self._load_pairs_from_dir(aug_seq_dir, aug_label_dir, aug_indices)
+
+    def _find_pair_dirs(self, base_dir: str):
+        sequence_dir = os.path.join(base_dir, "sequence")
+        label_dir = os.path.join(base_dir, "label")
+        return sequence_dir, label_dir
+
+    def _load_pairs_from_dir(self, seq_dir, label_dir, indices):
         for idx in indices:
             seq_path = os.path.join(seq_dir, f"{idx}.csv")
             label_path = os.path.join(label_dir, f"{idx}_label.csv")
-            self.sequence_label_pairs.append((seq_path, label_path))
+            if os.path.exists(seq_path) and os.path.exists(label_path):
+                self.sequence_label_pairs.append((seq_path, label_path))
 
     def __len__(self):
         return len(self.sequence_label_pairs)
@@ -83,3 +79,20 @@ class BabyMotionDataset(Dataset):
         }
 
         return sequence, action, metadata
+    
+
+class BabyMotionGANDataset(Dataset):
+    def __init__(self, dataset: BabyMotionDataset):
+        self.samples = []
+        label2idx = {action: idx for idx, action in enumerate(sorted(set(l["action"] for _, _, l in dataset)))}
+        for seq, action, _ in dataset:
+            if seq.shape[0] >= 100:
+                self.samples.append((seq[:100], label2idx[action]))
+        self.label2idx = label2idx
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        x, label = self.samples[idx]
+        return x, label
