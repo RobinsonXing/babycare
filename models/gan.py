@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Generator(nn.Module):
-    def __init__(self, noise_dim=128, label_dim=16, output_len=100, output_dim=3):
+    def __init__(self, latent_dim=100, embedding_dim=32, num_classes=16, output_len=100, output_dim=3):
         super().__init__()
-        self.label_emb = nn.Embedding(16, label_dim)  # 16 classes
+        self.label_emb = nn.Embedding(num_classes, embedding_dim)
         self.fc = nn.Sequential(
-            nn.Linear(noise_dim + label_dim, 256),
+            nn.Linear(latent_dim + embedding_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.ReLU(),
@@ -24,15 +24,16 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, label_dim=16, input_len=100, input_dim=3):
+    def __init__(self, embedding_dim=32, num_classes=16, input_len=100, input_dim=3):
         super().__init__()
-        self.label_emb = nn.Embedding(16, label_dim)
+        self.label_emb = nn.Embedding(num_classes, embedding_dim)
         self.fc = nn.Sequential(
-            nn.Linear(input_len * input_dim + label_dim, 512),
+            nn.Linear(input_len * input_dim + embedding_dim, 512),
             nn.ReLU(),
             nn.Linear(512, 256),
             nn.ReLU(),
-            nn.Linear(256, 1)
+            nn.Linear(256, 1),
+            nn.Sigmoid()
         )
 
     def forward(self, x, labels):

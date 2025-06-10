@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-import random
 
 class BabyMotionDataset(Dataset):
     def __init__(self, 
@@ -59,10 +58,8 @@ class BabyMotionDataset(Dataset):
 
         if T < self.min_len:
             return self.__getitem__((idx + 1) % len(self))
-
         if T > self.max_len:
-            start = random.randint(0, T - self.max_len)
-            sequence = sequence[start:start + self.max_len]
+            sequence = sequence[:self.max_len]
 
         if self.transform:
             sequence = self.transform(sequence)
@@ -79,20 +76,3 @@ class BabyMotionDataset(Dataset):
         }
 
         return sequence, action, metadata
-    
-
-class BabyMotionGANDataset(Dataset):
-    def __init__(self, dataset: BabyMotionDataset):
-        self.samples = []
-        label2idx = {action: idx for idx, action in enumerate(sorted(set(l["action"] for _, _, l in dataset)))}
-        for seq, action, _ in dataset:
-            if seq.shape[0] >= 100:
-                self.samples.append((seq[:100], label2idx[action]))
-        self.label2idx = label2idx
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __getitem__(self, idx):
-        x, label = self.samples[idx]
-        return x, label
