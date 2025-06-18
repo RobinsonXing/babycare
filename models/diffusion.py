@@ -7,11 +7,21 @@ class GaussianDiffusion:
         self.model = model
         self.timesteps = timesteps
 
+        # diffusion schedule
         self.betas = torch.linspace(beta_start, beta_end, timesteps)
         self.alphas = 1. - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - self.alphas_cumprod)
+
+    def to(self, device):
+        """Move all internal tensors to the given device."""
+        self.betas = self.betas.to(device)
+        self.alphas = self.alphas.to(device)
+        self.alphas_cumprod = self.alphas_cumprod.to(device)
+        self.sqrt_alphas_cumprod = self.sqrt_alphas_cumprod.to(device)
+        self.sqrt_one_minus_alphas_cumprod = self.sqrt_one_minus_alphas_cumprod.to(device)
+        return self
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
@@ -46,6 +56,7 @@ class GaussianDiffusion:
                 x += torch.sqrt(beta) * noise
         return x
 
+
 class DiffusionModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_classes, seq_len, num_layers=2):
         super().__init__()
@@ -54,9 +65,8 @@ class DiffusionModel(nn.Module):
         self.output = nn.Linear(hidden_dim, input_dim)
 
     def forward(self, x, label):
-        # x: [B, T, input_dim], label: [B]
         B, T, _ = x.shape
-        label_embedding = self.label_emb(label).unsqueeze(1).repeat(1, T, 1)  # [B, T, hidden_dim]
-        x_cond = torch.cat([x, label_embedding], dim=-1)  # [B, T, input_dim + hidden_dim]
+        label_embedding = self.label_emb(label).unsqueeze(1).repeat(1, T, 1)
+        x_cond = torch.cat([x, label_embedding], dim=-1)
         h, _ = self.lstm(x_cond)
         return self.output(h)
