@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 class BabyMotionDataset(Dataset):
     def __init__(self, 
                  origin_dir: str,
-                 aug_dirs: list[str] = None,
+                 aug_dirs: list[str],
                  max_len: int = 100,
                  min_len: int = 10,
                  is_train: bool = True,
